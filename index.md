@@ -1,7 +1,7 @@
 ## Welcome to My GitHub Page
 
-## HOMEWORK 1
+### HOMEWORK 1
 
-## HOMEWORK 2
+### HOMEWORK 2
 
-## HOMEWORK 3
+### HOMEWORK 3
