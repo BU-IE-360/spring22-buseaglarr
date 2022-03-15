@@ -1,5 +1,7 @@
-## Welcome to My GitHub Pages
+## Welcome to My GitHub Page
 
-##HOMEWROK 1
+## HOMEWORK 1
 
-##HOMEWROK 2
+## HOMEWORK 2
+
+## HOMEWORK 3
