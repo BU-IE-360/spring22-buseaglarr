@@ -1,5 +1,5 @@
 
-## Buse Ağlar Progress Journal
+### Buse Ağlar Progress Journal
 
 ## HOMEWORK 1
 
