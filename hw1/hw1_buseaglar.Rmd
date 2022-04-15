@@ -1,0 +1,181 @@
+---
+title: "Homework 1 Buse Ağlar"
+output: html_document
+date: '2022-04-08'
+---
+
+```{r setup, include=FALSE,results="hide", warning=FALSE, message=FALSE}
+library(ggplot2)
+library(lubridate)
+library(readxl)
+library(data.table)
+ library(forecast)
+ library(knitr)
+ library(zoo)
+library(GGally)
+ 
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r importing and shaping, echo=FALSE,results="hide"}
+dataset <- read_excel("~/Desktop/ie360/2017-2021 hepsi.xlsx"
+                   , col_types = c("text", "numeric", "numeric", "numeric"))
+ names(dataset) <- c("Date", "HousePrice", "ExchangeRate", "ConstructionCost")
+ 
+ dataset$Date <- as.yearmon(dataset$Date)
+ 
+ dataset <- cbind(dataset,format(dataset$Date, "%Y"),format(dataset$Date, "%m"))
+ names(dataset)[5:6] <- c("Year","Month")
+
+  keyword1 <- read_excel("~/Downloads/dolarkeyword.xlsx", 
+                        col_types = c("text", "numeric") )
+
+  keyword2 <- read_excel("~/Downloads/inşaatdemirikeyword.xlsx", 
+                        col_types = c("text", "numeric") )
+ 
+  keyword3 <- read_excel("~/Downloads/satılıkevkeyword.xlsx", 
+                        col_types = c("text", "numeric") )
+ keyword1$Ay <- as.yearmon( keyword1$Ay)
+ keyword2$Ay <- as.yearmon( keyword2$Ay)
+ keyword3$Ay <- as.yearmon( keyword3$Ay)
+ 
+  
+ keyword1 <- cbind(keyword1,format(keyword1$Ay, "%Y"),format(keyword1$Ay, "%m"))
+ names(keyword1)[3:4] <- c("Year","Month")
+ keyword2 <- cbind(keyword2,format(keyword2$Ay, "%Y"),format(keyword2$Ay, "%m"))
+ names(keyword2)[3:4] <- c("Year","Month")
+ keyword3 <- cbind(keyword3,format(keyword3$Ay, "%Y"),format(keyword3$Ay, "%m"))
+ names(keyword3)[3:4] <- c("Year","Month")
+
+```
+
+## 1. Introduction 
+
+In recent years, there has been a great increase in the prices of both houses for sale and rent. While one reason for this increase is the increased demand for houses, there are other underlying reasons as well. The rapid depreciation of the Turkish lira against the dollar increased the prices of imported products. Some of the products that have increased in price are related to the construction sector. In particular, the increase in construction materials such as iron may have increased costs and caused an increase in house prices. 
+
+In this assignment, the data obtained from the CBRT Electronic Data Distribution System are examined, their graphs are drawn and the correlation between them is examined. Residential Property Price Index for New Dwellings data from Housing and Construction Statistics category, US Dollar (Buying) data from Exchange Rates category, Wholesale Prices Index-Construction Materials from Price Indices category are selected from EDSV system. In addition, the search volumes of the keywords "inşaat demiri", “dolar”, and “satılık ev” are analyzed with Google Trends.
+
+In this research, the question of whether there is a correlation between new dwelling prices, dollar exchange rate and construction material prices is examined.
+
+
+## 2. Analysis
+
+I will try to first understand the data by showing the 3 data sets I got from EVDS on the same plot.The data set includes the years 2017- 2021 and is at a monthly frequency. While writing the code, I made some data manipulations to prepare the plots more easily. I pulled the year and month information from the date part in the first column and added them to the data as two separate columns. 
+
+```{r plots1, echo=FALSE,warning=FALSE, message=FALSE}
+ plot(dataset$Date, dataset$HousePrice, type = "l", xlab = "Date",yaxt = 'n', ann=FALSE,  col="red" )
+ par(new=TRUE)
+ plot(dataset$Date, dataset$ExchangeRate, type = "l", xlab = "Date",yaxt = 'n', ann=FALSE,  col="blue")
+ par(new=TRUE)
+ plot(dataset$Date, dataset$ConstructionCost, type = "l", xlab = "Date" ,yaxt = 'n', ann=FALSE, col="green ")
+ title(main = "All 3 Data in Same Graph Between 2017 and 2021", xlab = "Date")
+
+```
+
+As can be seen in the graph, all 3 data are in an increasing trend. Although there are fluctuations in some time intervals, it can be thought that there is a relationship between 3 data. The blue line shows the change in the dollar rate and it seems to have more fluctuations than the others. 
+
+The next step is to examine the histograms. Below are the histograms of the three data sets separately and divided by years.
+
+```{r plots3.1, echo=FALSE,warning=FALSE, message=FALSE}
+ ggplot(data = dataset ,aes(x = HousePrice)) +
+   geom_histogram(color="black", fill="blue") + labs(title="New Dwelling Price Histogram for each year from 2017 to 2021", x= "New Dwelling Prices", y="Frequency")+ facet_wrap(facets=vars(Year), nrow=2) 
+```
+
+In the first 2 years, new dwelling prices show similar distributions. Low and recurring prices appear in the first two years. From 2019, the variety in prices is increasing. Especially in 2021, the price range is very wide, that is, there are houses with high and low prices. The reason for this change may be the widening of the income distribution gap. The rich get richer, while the poor get poorer. However, it is impossible to say for sure.
+
+```{r plots3.2, echo=FALSE,warning=FALSE, message=FALSE}
+ ggplot(data = dataset ,aes(x = ExchangeRate)) +
+   geom_histogram(color="black", fill="blueviolet") + labs(title="Dollar Exchange Rate Histogram for each year from 2017 to 2021", x= "Dolar Exchange Rate", y="Frequency")+ facet_wrap(facets=vars(Year), nrow=2) 
+```
+
+Looking at the histograms of the dollar rate, the annual increase is evident. It is seen that the dollar rate increased less in 2017 and 2019 compared to other years. In the other 3 years, the exchange rate range is wide.It can be said that it is similar to the normal distribution for 2020. 
+
+
+```{r plots3.3, echo=FALSE,warning=FALSE, message=FALSE}
+ ggplot(data = dataset ,aes(x = ConstructionCost)) +
+   geom_histogram(color="black", fill="brown1") + labs(title="Construction Materials Prices Histogram for each year from 2017 to 2021", x= "Price of Construction Materials", y="Frequency")+ facet_wrap(facets=vars(Year), nrow=2) 
+```
+
+Similar to the previous two histograms, the annual increase is also evident in the histogram for construction materials prices. In 2019 and 2021, there is a higher increase in construction materials prices, similar to the dollar rate, compared to other years. As a result of examining the histograms for 3 data sets, it can be said that there is an increase every year, some years the increase is more and the years with more increase are similar.
+
+Next, the 3 data sets obtained from EDSV,which we have examined so far, and the search results obtained from Google Trends are examined. The relationship between new dwelling prices and the keyword 'satılık ev' can be explored in the first two boxplot.
+
+```{r plots6.1, echo=FALSE,warning=FALSE, message=FALSE}
+ggplot(dataset, aes(x=Year,y=HousePrice)) + 
+   geom_boxplot(aes(fill=Year)) + 
+   xlab("Year") + ylab("New Dwelling Price") + 
+   ggtitle("New Dwelling Prices Boxplot for each year") 
+ 
+ ggplot(keyword3, aes(x=Year,y=keyword3$`satılık ev: (Türkiye)`)) + 
+   geom_boxplot(aes(fill=Year)) + 
+   xlab("Years") + ylab("Keyword 'satılık ev' ") + 
+   ggtitle(" 'satılık ev' Keyword Search between 2017-2021") 
+```
+
+While the annual increase in the new dwelling price is visible, the search for 'satılık ev' cannot be said to be on the rise. It can be interpreted that the increase in the price decreases the searches for the first 3 years. However, it can be said that the large search volume seen in 2020 and the increase in prices arouse people's curiosity and cause them to follow house prices.
+
+```{r plots6.2, echo=FALSE,warning=FALSE, message=FALSE}
+ ggplot(dataset, aes(x=Year,y=ConstructionCost)) + 
+   geom_boxplot(aes(fill=Year)) + 
+   xlab("Years") + ylab("Construction Materials Prices") + 
+   ggtitle("Construction Materials Prices Boxplot for each year") 
+ 
+ ggplot(keyword2, aes(x=Year,y=keyword2$`inşaat demiri: (Türkiye)`)) + 
+   geom_boxplot(aes(fill=Year)) + 
+   xlab("Years") + ylab("Keyword 'inşaat demiri' ") + 
+   ggtitle(" 'inşaat demiri' Keyword Search between 2017-2021") 
+```
+  
+The relationship between the prices of construction materials and the keyword rebar can be examined in the two boxplots above. Construction material prices increase every year, but in 2021, the increase is more. There seems to be a steady and slight increase in 'inşaat demiri' searches for the first 4 years.The large increase and deviation in searches in 2021 may have resulted from the higher increase in prices compared to normal ones. 
+  
+```{r plots6.3, echo=FALSE,warning=FALSE, message=FALSE}
+  ggplot(dataset, aes(x=Year,y=ExchangeRate)) + 
+   geom_boxplot(aes(fill=Year)) + 
+   xlab("Years") + ylab("Dollar Exchange Rate") + 
+   ggtitle("Dollar Exchange Rate Boxplot for each year") 
+ 
+ ggplot(keyword1, aes(x=Year,y=`dolar: (Türkiye)`)) + 
+   geom_boxplot(aes(fill=Year)) + 
+   xlab("Years") + ylab("Keyword 'dolar' ") + 
+   ggtitle(" 'dolar' Keyword Search between 2017-2021") 
+``` 
+ 
+Finally, the relationship between the dollar rate and the 'dollar' keyword can be examined in the last two box plots.While the increase is evident in the dollar rate, there is a slight increase in keyword searches. The excess of the deviation in both boxplots in 2018 and 2021 shows that there is a relationship between them.
+ 
+ 
+ Another data visualization method is the following plot with correlations, distributions, and scatter plots.
+ 
+```{r plots4, echo=FALSE,warning=FALSE, message=FALSE}
+ ggpairs(dataset, columns=2:4)
+```
+
+Distribution of each parameter appears in the diagonal part of the figure. Normal distribution is not seen in the graphs. There seems no normal distribution in the graphs, the distributions are quite right skewed. To make a comment, it can be said that the distributions seem similar to the log normal distribution. All 3 correlations are quite high, it is seen that there is a linear positive relationship between the parameters.In addition, it is understood from the scatter plots in the lower right that there is a correlation between the parameters.
+
+
+
+## 3. Conclusion
+
+To conclude, we examined the relationship between new dwelling price, construction materials cost and exchange rate in this study and found a correlation between them. We can create a linear model for new dwelling prices and examine the accuracy of the model.
+
+```{r model, echo=FALSE,warning=FALSE, message=FALSE}
+ linear_fit = lm(HousePrice~ExchangeRate+ConstructionCost, data = dataset)
+ summary(linear_fit)
+
+```
+
+Looking at the summary of the linear model, it is seen that some predicted values are underestimated and some are overestimated.Intercept gives the price when all predictors are 0. However, a negative intercept shows an illogical result. On the other hand, the cost of the construction materials has the lowest p-value and is the most significant parameter. The p-value of overall model is small, which is very strong evidence against the null hypothesis. The adjusted R squared value is quite high. When I removed the least significant parameter, the exchange rate, from the model to see if I could improve the model further, all parameters became very significant, but the adjusted R-squared value decreased.
+
+```{r model2, echo=FALSE,warning=FALSE, message=FALSE}
+ checkresiduals(linear_fit)
+
+```
+
+Finally, when we look at the residuals plots, the residuals are largely normally distributed, as they should be. However, a major shortcoming of the model is the large values in the lag-ACF graph.There seems to be correlation between the residuals, indicating that some of the information that should be used when calculating the model remains in the residuals. 
+
+## 4. References
+
+[Electronic Data Delivery System](https://evds2.tcmb.gov.tr/)
+[Google Trends](https://trends.google.com/trends/?geo=TR)
+
