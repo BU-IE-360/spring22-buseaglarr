@@ -1,5 +1,5 @@
 
-## Welcome to My GitHub Page
+## Buse Ağlar Progress Journal
 
 ## HOMEWROK 1
 
