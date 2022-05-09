@@ -1,0 +1,212 @@
+---
+title: "hw2-buseaglar"
+output: html_document
+date: '2022-05-07'
+---
+
+```{r setup, include=FALSE,results="hide", warning=FALSE, message=FALSE}
+library(ggplot2)
+library(data.table)
+library(forecast)
+library(GGally)
+library(ggcorrplot)
+library(forecast)
+library(zoo)
+library(RcppRoll)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r importing and shaping, echo=FALSE,results="hide"}
+ dataset <- read.csv("~/Desktop/ie360/hw2/IE360_Spring22_HW2_data.csv"
+                      , colClasses  = c("character", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric","numeric","numeric","numeric","numeric"))
+
+dataset <- data.table(dataset)
+dataset$Quarter=as.Date(as.yearqtr(dataset$Quarter, format = "%Y_Q%q"))
+names(dataset) <- c('Quarter','UGS','RNUV' ,'NLPG', 'PU', 'PG', 'NUGV', 'NDGV', 'GNPA', 'GNPC', 'GNP')
+
+test_data <- dataset[c(29:32),]
+dataset <- dataset[c(1:28),]
+
+test_data = data.table(test_data)
+test_data[,trend:=c(29:32)]
+V2=seq(1,4)
+test_data=cbind(test_data,as.factor(V2))
+
+```
+
+## 1. Introduction 
+
+The aim of this study is to model and forecast unleaded gasoline sales in a given quarter.The data used in this study includes quarterly gasoline and diesel sales (per 1000 m3) between 2000 and 2006. Based on these data, a forecast is made for 2007. In addition to the sales data, the values of the independent parameters that can affect the sales are also included in the data used.These independent variables are an index indicating the rate of new unleaded gasoline using vehicles being added to the traffic in a quarter (RNUV), average price (adjusted with an index) of a liter of unleaded gasoline in a quarter (PU), average price (adjusted with an index) of a liter of diesel gasoline in a quarter (PG), number of unleaded gasoline using vehicles in the traffic (NUGV), number of diesel gasoline using vehicles in the traffic (per 1000 people) (NDGV), agriculture component of Gross National Product (adjusted with an index) (GNPA), commerce component of Gross National Product (adjusted with an index) (GNPC), grand total for GNP (agriculture,and commerce and other components total) (GNP). In this study, concepts such as stationarity, autocorrelation, seasonality and trend that may have an impact on the regression model will be examined.
+
+## 2. Analysis
+
+The first thing to do before commenting on the data is to plot the time series.
+
+```{r plots1, echo=FALSE,warning=FALSE, message=FALSE}
+ ggplot(dataset, aes(x = Quarter, y=UGS)) + geom_line(color="purple") + labs(title = "Unleaded Gasoline Sale Time Series", x = "Quarter", y= "Gasoline Sale (in 1000 m3) ")
+
+```
+
+When the time series plot is examined, it is seen that there is a decreasing trend and there is a seasonality that shows similar characteristics every year.
+
+### 2.1 Stationarity Analysis
+
+ In order for a time series to be stationary, statistical properties must not change over time. As can be seen in the plot, it is clear that this time series does not have a stationary mean, because it is a plot that decreases over time, and its mean also decreases. However, it is difficult to say the same for variance by looking at the graph because there is no obvious change. Rolling mean and rolling variance plots are drawn to make a clearer interpretation of stationarity. 
+
+```{r plots2, echo=FALSE,warning=FALSE, message=FALSE}
+time_window=4
+mean_series=roll_mean(dataset$UGS,time_window,align='left')
+var_series=roll_var(dataset$UGS,time_window,align='left')
+
+par(mfrow=c(2,1))
+plot(mean_series,
+     type='l',col='red',
+     xlab = "time (t)",
+     ylab = "Rolling Mean",
+     main = "Mean series")
+
+plot(var_series,
+     type='l',col='blue',
+     xlab = "time (t)",
+     ylab = "Rolling Variance",
+     main = "Variance series")
+
+```
+
+As can be seen in the graphs, the time series does not have a stationary mean, but it is possible to have a stationary variance.
+
+### 2.2 Autocorrelation Analysis
+
+Next is to examine autocorrelations by drawing lag-ACF plot. Autocorrelation measures the linear relationship between lagged values of a time series. 
+
+```{r plots3, echo=FALSE,warning=FALSE, message=FALSE}
+ 
+acf(dataset$UGS)
+
+```
+
+Values outside the dashed lines indicate large autocorrelation. When the data has a trend, the corresponding ACF values decrease as the lags increase. This situation is observed in this graph and it can be said that the data has a trend. In addition, lags with a difference of 4 have similar increases and decreases, which indicates seasonality. 
+
+Also, another way to observe trend and seasonality is time series decomposition. The following decomposition of additive time series plot shows the trend and seasonality. Time series has a decreasing trend and an annual seasonality.
+
+```{r plots4, echo=FALSE,warning=FALSE, message=FALSE}
+ds <- dataset[,2]
+datasetts <- ts(ds, freq=4)
+dataset2 <- decompose(datasetts, type="additive")
+plot(dataset2)
+
+```
+
+### 2.3 Regression Analysis
+
+#### 2.3.1 Trend
+
+As seen in the analysis above, the time series has a decreasing trend. Therefore, trend component should be added to the regression model.
+
+```{r plots5, echo=FALSE,warning=FALSE, message=FALSE}
+dataset[, trend:=1:.N]
+lm_1=lm(UGS~trend,data = dataset)
+summary(lm_1)
+checkresiduals(lm_1)
+```
+
+As seen above, the trend is a very significant parameter when the trend component is added to the regression model. However, the adjusted R-squared value is low and needs improvement. When the resudials are examined, it can be said that the normality assumption is satisfied. However, there is a very high autocorrelation especially in the 2,4,6, and 8th lags. This indicates that residuals have information that should be used when creating the model. 
+
+#### 2.3.2 Seasonality
+
+It was seen in the reviews above that time series also has seasonality. Therefore, seasonality component needs to be added to the regression model.
+
+```{r plots6, echo=FALSE,warning=FALSE, message=FALSE}
+
+quarter=seq(1,4)
+dataset=cbind(dataset,as.factor(quarter))
+lm_2=lm(UGS~trend + V2,data = dataset)
+summary(lm_2)
+checkresiduals(lm_2)
+```
+
+By making some data manipulations, the seasonality component is added and the above model is obtained. Again, all parameters are quite significant. In addition, the Adjusted R-squared value has also improved over the first model. When the residuals are examined, it is seen that there is no big problem. Autocorrelations decreased, normality assumption is achieved and zero mean is observed.
+
+#### 2.3.3 Lagged Variable
+
+Lagged variables can also be added to the model to create a good model. Lagged 1 values are added to the data by some data manipulation and its effect on the model is examined.
+
+```{r plots7, echo=FALSE,warning=FALSE, message=FALSE}
+dataset$lag1[1]<- NA
+dataset$lag1[2:28]<- dataset$UGS[1:27]
+lm_3=lm(UGS~trend + V2 + lag1 ,data = dataset)
+summary(lm_3)
+checkresiduals(lm_3)
+
+```
+
+The adjusted R-squared value improved and autocorrelations further decreased. However, lagged values are not seen as significant in the model. 
+
+#### 2.3.4 Independent Variables
+
+Finally, the regression model can be improved with independent variables and better forecast can be made.The figure below is created to examine the correlation between the sales values of 9 independent variables.
+
+```{r plots8, echo=FALSE,warning=FALSE, message=FALSE}
+ggpairs(dataset, columns=2:11)
+
+```
+
+From the figure, it is seen that the UGS, which is the target variable, has a significant correlation with NLPG, PU, PG, NUGV, NDGV, GNPA. I will add them to the latest model one by one and see if they contribute to the model.
+
+```{r plots9, echo=FALSE,warning=FALSE, message=FALSE}
+lm_4=lm(UGS~trend + V2 + lag1 + NLPG   ,data = dataset)
+summary(lm_4)
+lm_5=lm(UGS~trend + V2 + lag1 + PU  ,data = dataset)
+summary(lm_5)
+lm_6=lm(UGS~trend + V2 + lag1 + PG  ,data = dataset)
+summary(lm_6) 
+lm_7=lm(UGS~trend + V2 + lag1 + NUGV  ,data = dataset)
+summary(lm_7) 
+lm_8=lm(UGS~trend + V2 + lag1 + NDGV  ,data = dataset)
+summary(lm_8) 
+lm_9=lm(UGS~trend + V2 + lag1 + GNPA  ,data = dataset)
+summary(lm_9) 
+
+```
+
+After examining all the models, I found that adding the NLPG independent variable worked best. However, lag 1 appears to be not significant in the model. The adjusted R-squared value improved when I removed lag 1 from the model.Therefore, I will continue the model with trend, seasonality and NLPG.
+
+### 2.4 Final Analysis
+
+```{r plots10, echo=FALSE,warning=FALSE, message=FALSE}
+dataset <- dataset[,1:13]
+lm_10=lm(UGS~trend + V2 + NLPG   ,data = dataset)
+summary(lm_10)
+checkresiduals(lm_10)
+
+```
+
+The adjusted R-square of my last model is 0.9313. It can be said to be a good model since it is an improved value compared to my previous models and is close to 1 in general. Also, all coefficients are quite significant. In other words, they are related to the UGS we want to model and they are all parameters that increase the power of the model. If we look at residuals, the autocorrelations seem to be low. The normality assumption of the residuals is also provided. In general, it can be said that this model is a good model.
+
+## 3. Predictions
+
+I made the forecast using the last model. My predictions for unleaded gasoline sales for 2007 are as follows:
+
+```{r plots11, echo=FALSE,warning=FALSE, message=FALSE}
+
+prediction = c(0,0,0,0)
+trend = 29
+V2 = 1
+prediction[1] = predict(lm_10,cbind(test_data[1,],trend,V2))
+trend = 30
+V2 = 2
+prediction[2] = predict(lm_10,cbind(test_data[2,],trend,V2))
+trend = 31
+V2 = 3
+prediction[3] = predict(lm_10,cbind(test_data[3,],trend,V2))
+trend = 32
+V2 = 4
+prediction[4] = predict(lm_10,cbind(test_data[4,],trend,V2))
+print(prediction)
+
+```
+
+## 4. Conclusion
+
+In this study, various parameters were examined to make a 2007 forecast for unleaded gasoline sales as intended. It was examined whether the time series is stationary or not and the autoregressive function was plotted. Trend, seasonality and lagged 1 values were examined and added to the model and compared. In addition, independent variables were added to the model after the correlation analysis and NLPG was determined as the best variable. In the last model, trend, seasonality, NLPG were used while lagged 1 was not used because it was not a significant coefficient. Estimates for 2007 were made with the final model. 
