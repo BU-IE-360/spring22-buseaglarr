@@ -250,4 +250,4 @@ First of all, we did not use the DSWRF and relative humidity data, since their m
 
 Secondly, more independent variables could be added to the model, other than the ones proposed to us in the project report. However, the data on the internet were not for free, so we could not implement any additional independent variables to the model.
 
-Finally, just as we have manipulated the night hours to be zero manually, we could manipulate the data around midday to not exceed the max capacity value. However since that value is changing throughout the data, as in some days it is 35 MW and some days 40 MW, we did not use this manipulation.
+Finally, just as we have manipulated the night hours to be zero manually, we could manipulate the data around midday to not exceed the max capacity value. However since that value is changing throughout the data, as in some days it is 35 MW and some days 40 MW, we did not use this manipulation. 
